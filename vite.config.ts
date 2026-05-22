@@ -1,6 +1,8 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 const isVercel = process.env.VERCEL === "1";
+const isCapacitor = process.env.CAPACITOR_BUILD === "1";
+const noCloudflare = isVercel || isCapacitor;
 
 export default defineConfig({
   tanstackStart: {
@@ -9,5 +11,5 @@ export default defineConfig({
       ...(isVercel ? { preset: "vercel" } : {}),
     },
   },
-  ...(isVercel ? { cloudflare: false } : {}),
+  ...(noCloudflare ? { cloudflare: false } : {}),
 });

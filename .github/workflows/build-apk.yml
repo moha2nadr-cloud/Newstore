@@ -34,6 +34,7 @@ jobs:
       - name: Build web
         run: bun run build
         env:
+          CAPACITOR_BUILD: 1
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
