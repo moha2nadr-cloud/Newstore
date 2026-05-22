@@ -1,5 +1,6 @@
 {
   "buildCommand": "NITRO_PRESET=vercel vite build",
+  "installCommand": "bun install",
   "framework": null,
   "nodeVersion": "22.x"
 }
