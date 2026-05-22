@@ -7,7 +7,7 @@ const isCapacitor = process.env.CAPACITOR_BUILD === "1";
 export default defineConfig({
   tanstackStart: {
     server: {
-      ...(isCapacitor ? {} : { entry: "server" }),
+      ...(isVercel || isCapacitor ? {} : { entry: "server" }),
     },
   },
   ...(isVercel || isCapacitor ? { cloudflare: false } : {}),
