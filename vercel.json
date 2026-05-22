@@ -2,7 +2,6 @@
   "buildCommand": "bun run build:vercel",
   "installCommand": "bun install",
   "outputDirectory": "dist/client",
-  "nodeVersion": "22.x",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
