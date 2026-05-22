@@ -1,5 +1,6 @@
 {
   "buildCommand": "vite build",
   "installCommand": "bun install",
-  "framework": null
+  "framework": null,
+  "outputDirectory": "dist/client"
 }
