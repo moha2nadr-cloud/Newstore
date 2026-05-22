@@ -9,7 +9,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "build:capacitor": "node scripts/build-capacitor.mjs",
-    "build:vercel": "node scripts/build-vercel.mjs",
+
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."

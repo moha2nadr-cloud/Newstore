@@ -1,5 +1,5 @@
 {
-  "buildCommand": "NITRO_PRESET=vercel vite build",
+  "buildCommand": "NITRO_PRESET=vercel vite build --config vite.config.vercel.ts",
   "installCommand": "bun install",
   "framework": null
 }
