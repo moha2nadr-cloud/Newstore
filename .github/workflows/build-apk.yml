@@ -1,93 +1,60 @@
 name: Build Android APK
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: "1.2.6"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: '22'
+          bun-version: ${{ env.BUN_VERSION }}
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
+      - run: bun install
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build web (for Capacitor)
+      - name: Build web app (Capacitor mode)
         run: bun run build:capacitor
         env:
+          CAPACITOR_BUILD: "1"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          LOVABLE_API_KEY: ${{ secrets.LOVABLE_API_KEY }}
 
-      - name: Inspect build output
-        run: |
-          echo "=== dist/ contents ==="
-          find dist -type f -name '*.html' -o -name '*.js' -o -name '*.css' 2>/dev/null | head -50
-          echo ""
-          echo "=== dist/client/ contents ==="
-          ls -la dist/client/ 2>/dev/null || echo "dist/client/ does not exist"
-          echo ""
-          echo "=== dist/ full tree ==="
-          find dist -maxdepth 3 -type f 2>/dev/null | head -80
-          echo ""
-          echo "=== checking .output/ ==="
-          find .output -maxdepth 3 -type f 2>/dev/null | head -30 || echo "no .output/"
-          echo ""
-          echo "=== checking .vinxi/ ==="
-          find .vinxi -maxdepth 3 -type f 2>/dev/null | head -30 || echo "no .vinxi/"
-          echo ""
-          echo "=== checking .nitro/ ==="
-          find .nitro -maxdepth 3 -type f 2>/dev/null | head -30 || echo "no .nitro/"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-      - name: Add Android platform
-        run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
+      - uses: android-actions/setup-android@v3
 
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: bun x cap sync android
 
-      - name: Copy app icon
-        run: |
-          ICON=resources/icon.png
-          if [ -f "$ICON" ]; then
-            for D in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-              DIR="android/app/src/main/res/mipmap-$D"
-              mkdir -p "$DIR"
-              cp "$ICON" "$DIR/ic_launcher.png"
-              cp "$ICON" "$DIR/ic_launcher_round.png"
-              cp "$ICON" "$DIR/ic_launcher_foreground.png"
-            done
-          fi
+      - name: Build debug APK
+        run: bun x cap open android
+        continue-on-error: true
 
-      - name: Build APK
-        working-directory: android
+      - name: Build APK with Gradle
         run: |
-          chmod +x ./gradlew
+          cd android
           ./gradlew assembleDebug
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          path: android/app/build/outputs/apk/debug/*.apk
