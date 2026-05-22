@@ -7,9 +7,7 @@ const noCloudflare = isVercel || isCapacitor;
 export default defineConfig({
   tanstackStart: {
     server: {
-      ...(isVercel
-        ? { preset: "vercel" }
-        : { entry: "server" }),
+      ...(isVercel ? {} : { entry: "server" }),
     },
   },
   ...(noCloudflare ? { cloudflare: false } : {}),
