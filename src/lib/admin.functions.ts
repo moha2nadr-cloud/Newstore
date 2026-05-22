@@ -1,16 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getSql } from "./db.server";
-import { verifyAdminCredentials, issueAdminSession, isAdmin, clearAdminSession } from "./auth.server";
-import { uploadDataUrl, deleteByUrl } from "./cloudinary.server";
 
 async function requireAdmin() {
+  const { isAdmin } = await import("./auth.server");
   if (!(await isAdmin())) throw new Error("غير مصرح");
 }
 
 export const adminLogin = createServerFn({ method: "POST" })
   .inputValidator(z.object({ email: z.string().email(), password: z.string().min(1) }))
   .handler(async ({ data }) => {
+    const { verifyAdminCredentials, issueAdminSession } = await import("./auth.server");
     const ok = await verifyAdminCredentials(data.email, data.password);
     if (!ok) throw new Error("بيانات الدخول غير صحيحة");
     await issueAdminSession();
@@ -18,11 +17,13 @@ export const adminLogin = createServerFn({ method: "POST" })
   });
 
 export const adminLogout = createServerFn({ method: "POST" }).handler(async () => {
+  const { clearAdminSession } = await import("./auth.server");
   clearAdminSession();
   return { ok: true };
 });
 
 export const adminCheck = createServerFn({ method: "GET" }).handler(async () => {
+  const { isAdmin } = await import("./auth.server");
   return { isAdmin: await isAdmin() };
 });
 
@@ -30,15 +31,16 @@ export const adminUpload = createServerFn({ method: "POST" })
   .inputValidator(z.object({ dataUrl: z.string().min(20), folder: z.string().optional() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { uploadDataUrl } = await import("./cloudinary.server");
     const url = await uploadDataUrl(data.dataUrl, data.folder || "herbs");
     return { url };
   });
 
-// Settings
 export const adminSaveSetting = createServerFn({ method: "POST" })
   .inputValidator(z.object({ key: z.string().min(1).max(60), value: z.any() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     await sql`
       INSERT INTO site_settings (key, value, updated_at)
@@ -48,11 +50,11 @@ export const adminSaveSetting = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Categories
 export const adminSaveCategory = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number().optional().nullable(), name: z.string().min(1).max(100), image_url: z.string().nullable().optional(), sort_order: z.number().optional() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     if (data.id) {
       await sql`UPDATE categories SET name = ${data.name}, image_url = ${data.image_url ?? null}, sort_order = ${data.sort_order ?? 0} WHERE id = ${data.id}`;
@@ -66,14 +68,17 @@ export const adminDeleteCategory = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     const r = await sql`SELECT image_url FROM categories WHERE id = ${data.id}` as any[];
-    if (r[0]?.image_url) await deleteByUrl(r[0].image_url);
+    if (r[0]?.image_url) {
+      const { deleteByUrl } = await import("./cloudinary.server");
+      await deleteByUrl(r[0].image_url);
+    }
     await sql`DELETE FROM categories WHERE id = ${data.id}`;
     return { ok: true };
   });
 
-// Products
 export const adminSaveProduct = createServerFn({ method: "POST" })
   .inputValidator(z.object({
     id: z.number().optional().nullable(),
@@ -89,6 +94,7 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     if (data.id) {
       await sql`UPDATE products SET
@@ -113,14 +119,15 @@ export const adminDeleteProduct = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     const r = await sql`SELECT image_urls FROM products WHERE id = ${data.id}` as any[];
+    const { deleteByUrl } = await import("./cloudinary.server");
     for (const u of (r[0]?.image_urls || [])) await deleteByUrl(u);
     await sql`DELETE FROM products WHERE id = ${data.id}`;
     return { ok: true };
   });
 
-// Slides
 export const adminSaveSlide = createServerFn({ method: "POST" })
   .inputValidator(z.object({
     id: z.number().optional().nullable(),
@@ -132,6 +139,7 @@ export const adminSaveSlide = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     if (data.id) {
       await sql`UPDATE slides SET image_url=${data.image_url}, title=${data.title ?? null}, subtitle=${data.subtitle ?? null}, cta_text=${data.cta_text ?? null}, sort_order=${data.sort_order ?? 0} WHERE id=${data.id}`;
@@ -145,16 +153,20 @@ export const adminDeleteSlide = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     const r = await sql`SELECT image_url FROM slides WHERE id=${data.id}` as any[];
-    if (r[0]?.image_url) await deleteByUrl(r[0].image_url);
+    if (r[0]?.image_url) {
+      const { deleteByUrl } = await import("./cloudinary.server");
+      await deleteByUrl(r[0].image_url);
+    }
     await sql`DELETE FROM slides WHERE id=${data.id}`;
     return { ok: true };
   });
 
-// Posts
 export const adminListPosts = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
+  const { getSql } = await import("./db.server");
   const sql = getSql();
   return await sql`SELECT id, kind, title, body, image_url, pinned, created_at FROM posts ORDER BY pinned DESC, created_at DESC` as any[];
 });
@@ -170,6 +182,7 @@ export const adminSavePost = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     if (data.id) {
       await sql`UPDATE posts SET kind=${data.kind}, title=${data.title ?? null}, body=${data.body ?? null}, image_url=${data.image_url ?? null}, pinned=${data.pinned ?? false}, published=true WHERE id=${data.id}`;
@@ -183,9 +196,13 @@ export const adminDeletePost = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     const r = await sql`SELECT image_url FROM posts WHERE id=${data.id}` as any[];
-    if (r[0]?.image_url) await deleteByUrl(r[0].image_url);
+    if (r[0]?.image_url) {
+      const { deleteByUrl } = await import("./cloudinary.server");
+      await deleteByUrl(r[0].image_url);
+    }
     await sql`DELETE FROM posts WHERE id=${data.id}`;
     return { ok: true };
   });
@@ -194,6 +211,7 @@ export const adminListComments = createServerFn({ method: "POST" })
   .inputValidator(z.object({ post_id: z.number() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     return await sql`SELECT id, author_name, body, reply_body, reply_at, created_at FROM post_comments WHERE post_id=${data.post_id} ORDER BY created_at DESC` as any[];
   });
@@ -202,6 +220,7 @@ export const adminReplyComment = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number(), reply: z.string().min(1).max(2000) }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     await sql`UPDATE post_comments SET reply_body=${data.reply}, reply_at=NOW() WHERE id=${data.id}`;
     return { ok: true };
@@ -211,6 +230,7 @@ export const adminDeleteComment = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
     await requireAdmin();
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     await sql`DELETE FROM post_comments WHERE id=${data.id}`;
     return { ok: true };

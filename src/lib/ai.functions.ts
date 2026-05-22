@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getSql } from "./db.server";
 import { z } from "zod";
 
 export const checkDisclaimer = createServerFn({ method: "POST" })
   .inputValidator(z.object({ fingerprint: z.string().min(1) }))
   .handler(async ({ data }) => {
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     const rows = await sql`SELECT 1 FROM ai_disclaimer_accepted WHERE fingerprint = ${data.fingerprint}` as any[];
     return { accepted: rows.length > 0 };
@@ -13,6 +13,7 @@ export const checkDisclaimer = createServerFn({ method: "POST" })
 export const acceptDisclaimer = createServerFn({ method: "POST" })
   .inputValidator(z.object({ fingerprint: z.string().min(1) }))
   .handler(async ({ data }) => {
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     await sql`INSERT INTO ai_disclaimer_accepted (fingerprint) VALUES (${data.fingerprint}) ON CONFLICT DO NOTHING`;
     return { ok: true };
@@ -33,6 +34,7 @@ export const aiChat = createServerFn({ method: "POST" })
       yield { delta: "خدمة الذكاء الاصطناعي غير مهيأة." };
       return;
     }
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     const settingsRows = await sql`SELECT value FROM site_settings WHERE key = 'ai_prompt'` as any[];
     const customPrompt = settingsRows[0]?.value || "أنت طبيب أعشاب خبير.";

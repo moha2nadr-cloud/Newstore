@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getSql } from "./db.server";
 
 const PUBLIC_KEYS = [
   "store_name", "store_tagline",
@@ -10,6 +9,7 @@ const PUBLIC_KEYS = [
 ];
 
 export const getPublicSettings = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSql } = await import("./db.server");
   const sql = getSql();
   const rows = await sql`SELECT key, value FROM site_settings WHERE key = ANY(${PUBLIC_KEYS as any})` as any[];
   const out: Record<string, any> = {};
@@ -20,6 +20,7 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(async
 });
 
 export const getAllSettings = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSql } = await import("./db.server");
   const sql = getSql();
   const rows = await sql`SELECT key, value FROM site_settings` as any[];
   const out: Record<string, any> = {};

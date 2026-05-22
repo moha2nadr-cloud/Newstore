@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getSql } from "./db.server";
 import { z } from "zod";
 
 export const getCategories = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSql } = await import("./db.server");
   const sql = getSql();
   return await sql`SELECT id, name, image_url FROM categories ORDER BY sort_order ASC, id ASC` as any[];
 });
@@ -19,8 +19,8 @@ const filtersSchema = z.object({
 export const getProducts = createServerFn({ method: "POST" })
   .inputValidator(filtersSchema)
   .handler(async ({ data }) => {
+    const { getSql } = await import("./db.server");
     const sql = getSql();
-    // Build dynamic conditions using neon's parameter style
     const search = data.search?.trim() || null;
     const cat = data.category_id ?? null;
     const status = data.status ?? null;
@@ -54,6 +54,7 @@ export const getProducts = createServerFn({ method: "POST" })
 export const getProduct = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     const rows = await sql`
       SELECT p.*, c.name AS category_name
@@ -67,6 +68,7 @@ export const getProduct = createServerFn({ method: "POST" })
 export const trackProductView = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number(), fingerprint: z.string().min(1) }))
   .handler(async ({ data }) => {
+    const { getSql } = await import("./db.server");
     const sql = getSql();
     const inserted = await sql`
       INSERT INTO product_views (product_id, fingerprint) VALUES (${data.id}, ${data.fingerprint})
